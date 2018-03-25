@@ -325,8 +325,8 @@ namespace com.clusterrr.hakchi_gui
                     case Tasks.UploadGames:
                         if (exportGames)
                             ExportGames();
-                        else
-                            UploadGames();
+                        //else
+                            //UploadGames();
                         break;
                     case Tasks.Memboot:
                         Memboot();
@@ -993,6 +993,7 @@ namespace com.clusterrr.hakchi_gui
             }
         }
 
+        /*
         public void UploadGames()
         {
             string gamesPath;
@@ -1194,7 +1195,7 @@ namespace com.clusterrr.hakchi_gui
 
                 foreach (ApplicationFileInfo appInfo in filesToDelete)
                 {
-                    data = $"rm \"{appInfo.Filepath}\"\n";
+                    data = $"rm \"{appInfo.FilePath}\"\n";
                     commandBuilder.Write(Encoding.UTF8.GetBytes(data), 0, data.Length);
                 }
 
@@ -1214,11 +1215,11 @@ namespace com.clusterrr.hakchi_gui
         {
             foreach (ApplicationFileInfo appInfo in filesToDelete)
             {
-                string filepath = rootDirectory + appInfo.Filepath.Substring(1).Replace('/', '\\');
-                if (appInfo.IsTarStreamRefFile)
-                {
-                    filepath += ".tarstreamref";
-                }
+                string filepath = rootDirectory + appInfo.FilePath.Substring(1).Replace('/', '\\');
+                //if (appInfo.IsTarStreamRefFile)
+                //{
+                //    filepath += ".tarstreamref";
+                //}
 
                 File.Delete(filepath);
 
@@ -1230,6 +1231,7 @@ namespace com.clusterrr.hakchi_gui
                 }
             }
         }
+        */
 
         public void ExportGames()
         {
@@ -1762,22 +1764,23 @@ namespace com.clusterrr.hakchi_gui
                     var game = element as NesApplication;
                     var gameSize = game.Size();
                     Debug.WriteLine(string.Format("Processing {0} ('{1}'), size: {2}KB", game.Code, game.Name, gameSize / 1024));
-                    NesApplication gameCopy;
-                    if (linkRelativeGames)
-                    {   // linked export
-                        gameCopy = game.CopyTo(targetDirectory, NesApplication.CopyMode.LinkedExport);
-                    }
-                    else if (exportGames)
-                    {   // standard export
-                        gameCopy = game.CopyTo(targetDirectory, NesApplication.CopyMode.Export);
-                    }
-                    else
-                    {   // sync/upload to snes mini
-                        gameCopy = game.CopyTo(
-                            targetDirectory,
-                            ConfigIni.Instance.SyncLinked ? NesApplication.CopyMode.LinkedSync : NesApplication.CopyMode.Sync,
-                            true);
-                    }
+                    NesApplication gameCopy = game;
+                    //NesApplication gameCopy;
+                    //if (linkRelativeGames)
+                    //{   // linked export
+                    //    gameCopy = game.CopyTo(targetDirectory, NesApplication.CopyMode.LinkedExport);
+                    //}
+                    //else if (exportGames)
+                    //{   // standard export
+                    //    gameCopy = game.CopyTo(targetDirectory, NesApplication.CopyMode.Export);
+                    //}
+                    //else
+                    //{   // sync/upload to snes mini
+                    //    gameCopy = game.CopyTo(
+                    //        targetDirectory,
+                    //        ConfigIni.Instance.SyncLinked ? NesApplication.CopyMode.LinkedSync : NesApplication.CopyMode.Sync,
+                    //        true);
+                    //}
                     stats.TotalSize += gameSize;
                     stats.TransferSize += gameSize;
                     stats.TotalGames++;

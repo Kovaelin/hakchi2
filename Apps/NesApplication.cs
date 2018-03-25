@@ -321,7 +321,7 @@ namespace com.clusterrr.hakchi_gui
             AppTypeCollection.AppInfo appInfo = null;
             if (string.IsNullOrEmpty(metadata.System) || metadata.System.Length == 0 || !CoreCollection.Systems.Contains(metadata.System))
             {
-                string[] config = File.ReadAllLines(TarStream.refFileGet(files[0]));
+                string[] config = File.ReadAllLines(files[0]);
                 foreach (var line in config)
                 {
                     if (line.ToLower().StartsWith("exec="))
@@ -1018,127 +1018,202 @@ namespace com.clusterrr.hakchi_gui
                 prefixCode);
         }
 
-        public enum CopyMode { Standard, Sync, LinkedSync, Export, LinkedExport }
-        public NesApplication CopyTo(string path, CopyMode copyMode = CopyMode.Standard, bool pseudoLinks = false)
+        private DesktopFile GetAdjustedDesktopFile(string mediaGamePath, string iconPath, string profilePath)
         {
-            var targetDir = Path.Combine(path, desktop.Code);
+            DesktopFile newdesktop = (DesktopFile)desktop.Clone();
+            foreach (var arg in newdesktop.Args)
+            {
+                Match m = Regex.Match(arg, @"(^\/.*)\/(?:" + newdesktop.Code + @"\/)([^.]*)(.*$)");
+                if (m.Success)
+                {
+                    newdesktop.Exec = newdesktop.Exec.Replace(m.Groups[1].ToString(), mediaGamePath);
+                    break;
+                }
+            }
+            newdesktop.IconPath = iconPath;
+            newdesktop.ProfilePath = profilePath;
+            return newdesktop;
+        }
+
+        // --- patch desktop file
+        private ApplicationFileInfo GetDesktopApplicationFileInfo(string relativeTargetPath, string mediaGamePath, string iconPath, string profilePath)
+        {
+            var newdesktop = GetAdjustedDesktopFile(mediaGamePath, iconPath, profilePath);
+            var f = new FileInfo(Path.Combine(basePath, newdesktop.Code + ".desktop"));
+            var canonicalPath = $"./{relativeTargetPath}/{desktop.Code}/{desktop.Code}.desktop";
+
+            return new ApplicationFileInfo(
+                canonicalPath, f.LastWriteTimeUtc, newdesktop.SaveTo(new MemoryStream()));
+        }
+
+        // --- normal sync
+        private HashSet<ApplicationFileInfo> CopyToSync(string relativeTargetPath)
+        {
+            string targetDir = $"{relativeTargetPath}/{desktop.Code}";
+
+            string mediaGamePath = hakchi.GamesPath;
+            string iconPath = hakchi.GamesPath;
+            if (IsOriginalGame)
+            {
+                mediaGamePath = hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+                if (!File.Exists(this.iconPath))
+                    iconPath = hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+            }
+            HashSet<ApplicationFileInfo> gameSet = ApplicationFileInfo.GetApplicationFileInfoForDirectory(
+                basePath, targetDir, true, new string[] { desktop.Code + ".desktop" });
+            gameSet.Add(GetDesktopApplicationFileInfo(
+                relativeTargetPath, mediaGamePath, iconPath, hakchi.GamesProfilePath));
+            return gameSet;
+        }
+
+        // --- linked sync
+        private HashSet<ApplicationFileInfo> CopyToSyncLinked(string relativeTargetPath)
+        {
+            string targetDir = $"{relativeTargetPath}/{desktop.Code}";
+            string targetStorageDir = $".storage/{desktop.Code}";
+
+            string mediaGamePath = hakchi.GetRemoteGameSyncPath() + "/.storage";
+            string iconPath = mediaGamePath;
+            if (IsOriginalGame)
+            {
+                mediaGamePath = hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+                if (!File.Exists(this.iconPath))
+                    iconPath = hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+            }
+            HashSet<ApplicationFileInfo> gameSet = ApplicationFileInfo.GetApplicationFileInfoForDirectory(
+                basePath, targetStorageDir, true, new string[] { desktop.Code + ".desktop" });
+            gameSet.Add(GetDesktopApplicationFileInfo(
+                relativeTargetPath, mediaGamePath, iconPath, hakchi.GamesProfilePath));
+            return gameSet;
+        }
+
+        // --- normal export
+        private HashSet<ApplicationFileInfo> CopyToExport(string relativeTargetPath)
+        {
+            string targetDir = $"{relativeTargetPath}/{desktop.Code}";
+
+            string mediaGamePath = hakchi.GamesPath;
+            string iconPath = hakchi.GamesPath;
+
+            HashSet<ApplicationFileInfo> gameSet = ApplicationFileInfo.GetApplicationFileInfoForDirectory(
+                basePath, targetDir, true, new string[] { desktop.Code + ".desktop" });
+
+            if (IsOriginalGame)
+            {
+                string originalBasePath = Path.Combine(OriginalGamesCacheDirectory, desktop.Code);
+                if (Directory.Exists(originalBasePath))
+                {
+                    HashSet<ApplicationFileInfo> supplementalGameSet = ApplicationFileInfo.GetApplicationFileInfoForDirectory(
+                        originalBasePath, targetDir, true, new string[] { desktop.Code + ".desktop" });
+                    gameSet = gameSet.CopyFilesTo(supplementalGameSet, false);
+                }
+
+                bool romExists = false;
+                bool iconExists = false;
+                foreach (var afi in gameSet)
+                {
+                    if (Regex.IsMatch(afi.FilePath, @"[.](?:sfrom|qd|nes)$")) romExists = true;
+                    if (afi.FilePath.EndsWith(desktop.Code + ".png")) iconExists = true;
+                    if (romExists && iconExists) break;
+                }
+
+                if (!romExists)
+                    mediaGamePath = hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+                if (!iconExists)
+                    iconPath = hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+            }
+
+            gameSet.Add(GetDesktopApplicationFileInfo(
+                relativeTargetPath, mediaGamePath, iconPath, hakchi.GamesProfilePath));
+            return gameSet;
+        }
+
+        // --- linked export
+        private HashSet<ApplicationFileInfo> CopyToExportLinked(string relativeTargetPath)
+        {
+            string targetDir = $"{relativeTargetPath}/{desktop.Code}";
+
+            string originalMediaGamePath = hakchi.MediaPath + OriginalGamesCacheDirectory.Substring(2).Replace("\\", "/");
+            string mediaGamePath = hakchi.MediaPath + GamesDirectory.Substring(2).Replace("\\", "/");
+            string iconPath = mediaGamePath;
+            if (IsOriginalGame)
+            {
+                var originalExtensions = new string[] { ".sfrom", ".qd", ".nes" };
+                bool foundRom = false;
+                bool foundIcon = File.Exists(this.iconPath);
+                foreach (var file in Directory.GetFiles(basePath, "*"))
+                {
+                    if (originalExtensions.Contains(Path.GetExtension(file)))
+                        foundRom = true;
+                    if (Path.GetFileName(file).Equals(desktop.Code + ".png"))
+                        foundIcon = true;
+                    if (foundRom && foundIcon) break;
+                }
+
+                string originalBasePath = Path.Combine(OriginalGamesCacheDirectory, desktop.Code);
+                if (!foundRom || !foundIcon)
+                {
+                    if (Directory.Exists(originalBasePath))
+                    {
+                        foreach (var file in Directory.GetFiles(originalBasePath, "*"))
+                        {
+                            if (!foundRom && originalExtensions.Contains(Path.GetExtension(file)))
+                            {
+                                mediaGamePath = originalMediaGamePath;
+                                foundRom = true;
+                            }
+                            if (!foundIcon && Path.GetFileName(file).Equals(desktop.Code + ".png"))
+                            {
+                                iconPath = originalMediaGamePath;
+                                foundIcon = true;
+                            }
+                            if (foundRom && foundIcon) break;
+                        }
+                    }
+                }
+
+                if (!foundRom)
+                    mediaGamePath = hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+                if (!foundIcon)
+                    iconPath = hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+            }
+            return new HashSet<ApplicationFileInfo>() {
+                GetDesktopApplicationFileInfo(relativeTargetPath, mediaGamePath, iconPath, hakchi.GamesProfilePath) };
+        }
+        
+        public enum CopyMode { Standard, Sync, LinkedSync, Export, LinkedExport }
+        public NesApplication CopyTo(string path, HashSet<ApplicationFileInfo> localGameSet = null, CopyMode copyMode = CopyMode.Standard)
+        {
             if (copyMode == CopyMode.Standard)
             {
+                string targetDir = Path.Combine(path, desktop.Code);
                 Shared.DirectoryCopy(basePath, targetDir, true, false, true, false);
                 return FromDirectory(targetDir);
             }
 
-            string relativeGamesPath = hakchi.MediaPath + GamesDirectory.Substring(2).Replace("\\", "/");
-            string relativeOriginalGamesPath = hakchi.MediaPath + OriginalGamesCacheDirectory.Substring(2).Replace("\\", "/");
-
-            // new feature: linked sync paths
-            string relativeGamesStoragePath = hakchi.GetRemoteGameSyncPath() + "/.storage";
-            string relativeTargetDir = Shared.PathCombine(Path.GetDirectoryName(path), ".storage", desktop.Code);
-
-            // handle all 3 different sync scenarios (with original or custom games)
-            string mediaGamePath = null, profilePath = null, iconPath = null;
-            if (IsOriginalGame)
-            {
-                switch (copyMode)
-                {
-                    case CopyMode.Sync:
-                        mediaGamePath = hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
-                        iconPath = File.Exists(this.iconPath) ? hakchi.GamesPath : hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
-                        break;
-                    case CopyMode.LinkedSync:
-                        mediaGamePath = hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
-                        iconPath = File.Exists(this.iconPath) ? relativeGamesStoragePath : hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
-                        break;
-                    case CopyMode.Export:
-                        mediaGamePath = Directory.Exists(Path.Combine(OriginalGamesCacheDirectory, desktop.Code)) ? hakchi.GamesPath : hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
-                        iconPath = File.Exists(this.iconPath) ? hakchi.GamesPath : hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
-                        break;
-                    case CopyMode.LinkedExport:
-                        mediaGamePath = Directory.Exists(Path.Combine(OriginalGamesCacheDirectory, desktop.Code)) ? relativeOriginalGamesPath : hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
-                        iconPath = File.Exists(this.iconPath) ? relativeGamesPath : mediaGamePath;
-                        break;
-                }
-            }
-            else
-            {
-                switch (copyMode)
-                {
-                    case CopyMode.Sync:
-                        mediaGamePath = iconPath = hakchi.GamesPath;
-                        break;
-                    case CopyMode.LinkedSync:
-                        mediaGamePath = iconPath = relativeGamesStoragePath;
-                        break;
-                    case CopyMode.Export:
-                        mediaGamePath = iconPath = hakchi.GamesPath;
-                        break;
-                    case CopyMode.LinkedExport:
-                        mediaGamePath = iconPath = relativeGamesPath;
-                        break;
-                }
-            }
-            profilePath = hakchi.GamesProfilePath;
-
-            // copy to new target
-            Debug.WriteLine($"Copying game \"{desktop.Name}\" into \"{path}\"");
+            HashSet<ApplicationFileInfo> gameSet;
             switch (copyMode)
             {
+                default:
+                    return this;
                 case CopyMode.Sync:
-                    Shared.DirectoryCopy(basePath, targetDir, true, false, true,
-                        pseudoLinks && !(this is ISupportsGameGenie && File.Exists(this.GameGeniePath)),
-                        new string[] {desktop.Code + ".desktop"});
+                    gameSet = CopyToSync(path);
                     break;
-
                 case CopyMode.LinkedSync:
-                    Directory.CreateDirectory(targetDir);
-                    Shared.DirectoryCopy(basePath, relativeTargetDir, true, false, true,
-                        pseudoLinks && !(this is ISupportsGameGenie && File.Exists(this.GameGeniePath)),
-                        new string[] { desktop.Code + ".desktop" });
+                    gameSet = CopyToSyncLinked(path);
                     break;
-
                 case CopyMode.Export:
-                    Shared.DirectoryCopy(basePath, targetDir, true, false, true, false);
-                    if (Directory.Exists(Path.Combine(OriginalGamesCacheDirectory, desktop.Code)))
-                    {
-                        Shared.DirectoryCopy(Path.Combine(OriginalGamesCacheDirectory, desktop.Code), targetDir, true, true, false, false);
-                    }
+                    gameSet = CopyToExport(path);
                     break;
-
                 case CopyMode.LinkedExport:
-                    Directory.CreateDirectory(targetDir);
-                    if (Directory.Exists(Shared.PathCombine(OriginalGamesCacheDirectory, desktop.Code, "autoplay")))
-                    {
-                        Shared.DirectoryCopy(Shared.PathCombine(OriginalGamesCacheDirectory, desktop.Code, "autoplay"),
-                            Path.Combine(targetDir, "autoplay"), true, false, true, false);
-                    }
-                    if (Directory.Exists(Shared.PathCombine(OriginalGamesCacheDirectory, desktop.Code, "pixelart")))
-                    {
-                        Shared.DirectoryCopy(Shared.PathCombine(OriginalGamesCacheDirectory, desktop.Code, "pixelart"),
-                            Path.Combine(targetDir, "pixelart"), true, false, true, false);
-                    }
+                    gameSet = CopyToExportLinked(path);
                     break;
             }
-
-            // copy adjusted desktop file to target
-            DesktopFile newDesktop = (DesktopFile)desktop.Clone();
-            foreach (var arg in newDesktop.Args)
-            {
-                Match m = Regex.Match(arg, @"(^\/.*)\/(?:" + newDesktop.Code + @"\/)([^.]*)(.*$)");
-                if (m.Success)
-                {
-                    newDesktop.Exec = newDesktop.Exec.Replace(m.Groups[1].ToString(), mediaGamePath);
-                    break;
-                }
-            }
-            newDesktop.IconPath = iconPath;
-            newDesktop.ProfilePath = profilePath;
-            newDesktop.SaveTo(Path.Combine(targetDir, desktop.Code + ".desktop"));
-
-            // return new app
-            return FromDirectory(targetDir);
+            localGameSet.UnionWith(gameSet);
+            return this;
         }
 
-        public static readonly string[] nonCompressibleExtensions = { ".7z", ".zip", ".hsqs", ".sh", ".pbp", ".chd" };
+        public static readonly string[] nonCompressibleExtensions = { ".7z", ".zip", "*.rar", ".hsqs", ".sh", ".pbp", ".chd" };
         public string[] CompressPossible()
         {
             if (!Directory.Exists(basePath)) return new string[0];
@@ -1214,5 +1289,117 @@ namespace com.clusterrr.hakchi_gui
                 return obj.Code.GetHashCode();
             }
         }
+
+
+        /*
+        public NesApplication CopyTo(string path, HashSet<ApplicationFileInfo> localGameSet = null, CopyMode copyMode = CopyMode.Standard)
+        {
+            string relativeGamesPath = hakchi.MediaPath + GamesDirectory.Substring(2).Replace("\\", "/");
+            string relativeOriginalGamesPath = hakchi.MediaPath + OriginalGamesCacheDirectory.Substring(2).Replace("\\", "/");
+
+            // new feature: linked sync paths
+            string relativeGamesStoragePath = hakchi.GetRemoteGameSyncPath() + "/.storage";
+            string relativeTargetDir = Shared.PathCombine(Path.GetDirectoryName(path), ".storage", desktop.Code);
+
+            // handle all 3 different sync scenarios (with original or custom games)
+            string mediaGamePath = null, profilePath = null, iconPath = null;
+            if (IsOriginalGame)
+            {
+                switch (copyMode)
+                {
+                    case CopyMode.Sync:
+                        mediaGamePath = hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+                        iconPath = File.Exists(this.iconPath) ? hakchi.GamesPath : hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+                        break;
+                    case CopyMode.LinkedSync:
+                        mediaGamePath = hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+                        iconPath = File.Exists(this.iconPath) ? relativeGamesStoragePath : hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+                        break;
+                    case CopyMode.Export:
+                        mediaGamePath = Directory.Exists(Path.Combine(OriginalGamesCacheDirectory, desktop.Code)) ? hakchi.GamesPath : hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+                        iconPath = File.Exists(this.iconPath) ? hakchi.GamesPath : hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+                        break;
+                    case CopyMode.LinkedExport:
+                        mediaGamePath = Directory.Exists(Path.Combine(OriginalGamesCacheDirectory, desktop.Code)) ? relativeOriginalGamesPath : hakchi.SquashFsPath + hakchi.GamesSquashFsPath;
+                        iconPath = File.Exists(this.iconPath) ? relativeGamesPath : mediaGamePath;
+                        break;
+                }
+            }
+            else
+            {
+                switch (copyMode)
+                {
+                    case CopyMode.Sync:
+                        mediaGamePath = iconPath = hakchi.GamesPath;
+                        break;
+                    case CopyMode.LinkedSync:
+                        mediaGamePath = iconPath = relativeGamesStoragePath;
+                        break;
+                    case CopyMode.Export:
+                        mediaGamePath = iconPath = hakchi.GamesPath;
+                        break;
+                    case CopyMode.LinkedExport:
+                        mediaGamePath = iconPath = relativeGamesPath;
+                        break;
+                }
+            }
+            profilePath = hakchi.GamesProfilePath;
+
+            // copy to new target
+            Debug.WriteLine($"Copying game \"{desktop.Name}\" into \"{path}\"");
+            switch (copyMode)
+            {
+                case CopyMode.Sync:
+                    Shared.DirectoryCopy(basePath, targetDir, true, false, true, false, new string[] {desktop.Code + ".desktop"});
+                    break;
+
+                case CopyMode.LinkedSync:
+                    Directory.CreateDirectory(targetDir);
+                    Shared.DirectoryCopy(basePath, relativeTargetDir, true, false, true, false, new string[] { desktop.Code + ".desktop" });
+                    break;
+
+                case CopyMode.Export:
+                    Shared.DirectoryCopy(basePath, targetDir, true, false, true, false);
+                    if (Directory.Exists(Path.Combine(OriginalGamesCacheDirectory, desktop.Code)))
+                    {
+                        Shared.DirectoryCopy(Path.Combine(OriginalGamesCacheDirectory, desktop.Code), targetDir, true, true, false, false);
+                    }
+                    break;
+
+                case CopyMode.LinkedExport:
+                    Directory.CreateDirectory(targetDir);
+                    if (Directory.Exists(Shared.PathCombine(OriginalGamesCacheDirectory, desktop.Code, "autoplay")))
+                    {
+                        Shared.DirectoryCopy(Shared.PathCombine(OriginalGamesCacheDirectory, desktop.Code, "autoplay"),
+                            Path.Combine(targetDir, "autoplay"), true, false, true, false);
+                    }
+                    if (Directory.Exists(Shared.PathCombine(OriginalGamesCacheDirectory, desktop.Code, "pixelart")))
+                    {
+                        Shared.DirectoryCopy(Shared.PathCombine(OriginalGamesCacheDirectory, desktop.Code, "pixelart"),
+                            Path.Combine(targetDir, "pixelart"), true, false, true, false);
+                    }
+                    break;
+            }
+
+            // copy adjusted desktop file to target
+            DesktopFile newDesktop = (DesktopFile)desktop.Clone();
+            foreach (var arg in newDesktop.Args)
+            {
+                Match m = Regex.Match(arg, @"(^\/.*)\/(?:" + newDesktop.Code + @"\/)([^.]*)(.*$)");
+                if (m.Success)
+                {
+                    newDesktop.Exec = newDesktop.Exec.Replace(m.Groups[1].ToString(), mediaGamePath);
+                    break;
+                }
+            }
+            newDesktop.IconPath = iconPath;
+            newDesktop.ProfilePath = profilePath;
+            newDesktop.SaveTo(Path.Combine(targetDir, desktop.Code + ".desktop"));
+
+            // return new app
+            return FromDirectory(targetDir);
+        }
+        */
+
     }
 }
