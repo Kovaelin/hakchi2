@@ -61,6 +61,15 @@ namespace com.clusterrr.hakchi_gui.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Abort.
+        /// </summary>
+        internal static string Abort {
+            get {
+                return ResourceManager.GetString("Abort", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Aborting....
         /// </summary>
         internal static string Aborting {
@@ -385,6 +394,15 @@ namespace com.clusterrr.hakchi_gui.Properties {
         internal static string CalculatingDiff {
             get {
                 return ResourceManager.GetString("CalculatingDiff", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cancel.
+        /// </summary>
+        internal static string Cancel {
+            get {
+                return ResourceManager.GetString("Cancel", resourceCulture);
             }
         }
         
@@ -1451,7 +1469,7 @@ namespace com.clusterrr.hakchi_gui.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to b4e5369 (dirty).
+        ///   Looks up a localized string similar to 8c6cdf2 (dirty).
         /// </summary>
         internal static string gitCommit {
             get {
@@ -1955,6 +1973,15 @@ namespace com.clusterrr.hakchi_gui.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Ok.
+        /// </summary>
+        internal static string OK {
+            get {
+                return ResourceManager.GetString("OK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Do you want to flash the original kernel?.
         /// </summary>
         internal static string OriginalKernelQ {
@@ -2135,6 +2162,24 @@ namespace com.clusterrr.hakchi_gui.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Repair games.
+        /// </summary>
+        internal static string RepairGames {
+            get {
+                return ResourceManager.GetString("RepairGames", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Repairing {0}.
+        /// </summary>
+        internal static string RepairingGame {
+            get {
+                return ResourceManager.GetString("RepairingGame", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to You already have the kernel dump. If you REALLY want to replace the backup of your kernel and you REALLY understand what you are doing, delete the &quot;hakchi2/dump&quot; folder manually..
         /// </summary>
         internal static string ReplaceKernelQ {
@@ -2185,25 +2230,6 @@ namespace com.clusterrr.hakchi_gui.Properties {
         internal static string ResettingOriginalGames {
             get {
                 return ResourceManager.GetString("ResettingOriginalGames", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Bandai - WonderSwan Color
-        ///Microsoft - MSX2
-        ///NEC - PC Engine CD - TurboGrafx-CD
-        ///Nintendo - Game Boy Advance (e-Cards)
-        ///Nintendo - Nintendo 64DD
-        ///Nintendo - Sufami Turbo
-        ///Nintendo - Super Nintendo Entertainment System Hacks
-        ///Sega - PICO
-        ///Sinclair - ZX Spectrum +3
-        ///SNK - Neo Geo Pocket Color
-        ///.
-        /// </summary>
-        internal static string retroarch_systems_blacklist {
-            get {
-                return ResourceManager.GetString("retroarch_systems_blacklist", resourceCulture);
             }
         }
         
@@ -2352,6 +2378,15 @@ namespace com.clusterrr.hakchi_gui.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Select file for {0}.
+        /// </summary>
+        internal static string SelectFileFor {
+            get {
+                return ResourceManager.GetString("SelectFileFor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Select the modules to install on your NES/SNES Mini.
         /// </summary>
         internal static string SelectModsInstall {
@@ -2483,6 +2518,16 @@ namespace com.clusterrr.hakchi_gui.Properties {
         internal static System.Drawing.Bitmap sign_question {
             get {
                 object obj = ResourceManager.GetObject("sign_question", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap sign_trashcan {
+            get {
+                object obj = ResourceManager.GetObject("sign_trashcan", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -2850,6 +2895,15 @@ namespace com.clusterrr.hakchi_gui.Properties {
         internal static string YesForAll {
             get {
                 return ResourceManager.GetString("YesForAll", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Yes to all.
+        /// </summary>
+        internal static string YesToAll {
+            get {
+                return ResourceManager.GetString("YesToAll", resourceCulture);
             }
         }
     }

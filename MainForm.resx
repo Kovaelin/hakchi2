@@ -213,25 +213,25 @@
     <value>&amp;File</value>
   </data>
   <data name="flashCustomKernelToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>152, 22</value>
+    <value>149, 22</value>
   </data>
   <data name="flashCustomKernelToolStripMenuItem.Text" xml:space="preserve">
     <value>Install / Repair</value>
   </data>
   <data name="resetToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>152, 22</value>
+    <value>149, 22</value>
   </data>
   <data name="resetToolStripMenuItem.Text" xml:space="preserve">
     <value>Reset</value>
   </data>
   <data name="uninstallToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>152, 22</value>
+    <value>149, 22</value>
   </data>
   <data name="uninstallToolStripMenuItem.Text" xml:space="preserve">
     <value>Uninstall</value>
   </data>
   <data name="toolStripMenuItem11.Size" type="System.Drawing.Size, System.Drawing">
-    <value>149, 6</value>
+    <value>146, 6</value>
   </data>
   <data name="normalModeToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
     <value>148, 22</value>
@@ -246,7 +246,7 @@
     <value>SD mode</value>
   </data>
   <data name="flashUbootToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>152, 22</value>
+    <value>149, 22</value>
   </data>
   <data name="flashUbootToolStripMenuItem.Text" xml:space="preserve">
     <value>Flash uboot</value>
@@ -313,7 +313,7 @@
     <value>Format NAND-C</value>
   </data>
   <data name="advancedToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>152, 22</value>
+    <value>149, 22</value>
   </data>
   <data name="advancedToolStripMenuItem.Text" xml:space="preserve">
     <value>Advanced</value>
@@ -710,6 +710,9 @@
   <data name="fAQToolStripMenuItem.Text" xml:space="preserve">
     <value>FAQ</value>
   </data>
+  <data name="donateToolStripMenuItem.Enabled" type="System.Boolean, mscorlib">
+    <value>False</value>
+  </data>
   <data name="donateToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
     <value>246, 22</value>
   </data>
@@ -932,15 +935,6 @@
   <data name="deleteSelectedGamesToolStripMenuItem.Text" xml:space="preserve">
     <value>Delete selected games</value>
   </data>
-  <data name="toolStripMenuItem19.Size" type="System.Drawing.Size, System.Drawing">
-    <value>280, 6</value>
-  </data>
-  <data name="repairGamesToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
-    <value>283, 22</value>
-  </data>
-  <data name="repairGamesToolStripMenuItem.Text" xml:space="preserve">
-    <value>Attempt to repair games</value>
-  </data>
   <data name="toolStripMenuItem17.Size" type="System.Drawing.Size, System.Drawing">
     <value>280, 6</value>
   </data>
@@ -968,6 +962,15 @@
   <data name="sFROMToolToolStripMenuItem1.Text" xml:space="preserve">
     <value>SFROM Tool</value>
   </data>
+  <data name="repairGamesToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
+    <value>283, 22</value>
+  </data>
+  <data name="repairGamesToolStripMenuItem.Text" xml:space="preserve">
+    <value>Repair games</value>
+  </data>
+  <data name="toolStripMenuItem19.Size" type="System.Drawing.Size, System.Drawing">
+    <value>280, 6</value>
+  </data>
   <data name="selectEmulationCoreToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
     <value>283, 22</value>
   </data>
@@ -975,7 +978,7 @@
     <value>Select emulation core...</value>
   </data>
   <data name="contextMenuStrip.Size" type="System.Drawing.Size, System.Drawing">
-    <value>284, 270</value>
+    <value>284, 248</value>
   </data>
   <data name="&gt;&gt;contextMenuStrip.Name" xml:space="preserve">
     <value>contextMenuStrip</value>
@@ -2747,6 +2750,18 @@
   <data name="&gt;&gt;resetROMHeaderToolStripMenuItem.Type" xml:space="preserve">
     <value>System.Windows.Forms.ToolStripMenuItem, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="&gt;&gt;repairGamesToolStripMenuItem.Name" xml:space="preserve">
+    <value>repairGamesToolStripMenuItem</value>
+  </data>
+  <data name="&gt;&gt;repairGamesToolStripMenuItem.Type" xml:space="preserve">
+    <value>System.Windows.Forms.ToolStripMenuItem, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="&gt;&gt;toolStripMenuItem19.Name" xml:space="preserve">
+    <value>toolStripMenuItem19</value>
+  </data>
+  <data name="&gt;&gt;toolStripMenuItem19.Type" xml:space="preserve">
+    <value>System.Windows.Forms.ToolStripSeparator, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
   <data name="&gt;&gt;selectEmulationCoreToolStripMenuItem.Name" xml:space="preserve">
     <value>selectEmulationCoreToolStripMenuItem</value>
   </data>
@@ -2872,18 +2887,6 @@
   </data>
   <data name="&gt;&gt;maximumGamesPerFolderToolStripMenuItem.Type" xml:space="preserve">
     <value>System.Windows.Forms.ToolStripMenuItem, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
-  <data name="&gt;&gt;repairGamesToolStripMenuItem.Name" xml:space="preserve">
-    <value>repairGamesToolStripMenuItem</value>
-  </data>
-  <data name="&gt;&gt;repairGamesToolStripMenuItem.Type" xml:space="preserve">
-    <value>System.Windows.Forms.ToolStripMenuItem, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
-  <data name="&gt;&gt;toolStripMenuItem19.Name" xml:space="preserve">
-    <value>toolStripMenuItem19</value>
-  </data>
-  <data name="&gt;&gt;toolStripMenuItem19.Type" xml:space="preserve">
-    <value>System.Windows.Forms.ToolStripSeparator, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="&gt;&gt;$this.Name" xml:space="preserve">
     <value>MainForm</value>

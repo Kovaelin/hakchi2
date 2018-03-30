@@ -252,9 +252,9 @@ namespace com.clusterrr.hakchi_gui
                     new object[] { owner, text, caption, buttons, icon, defaultButton, tweak });
             }
             TaskbarProgress.SetState(owner as Form, TaskbarProgress.TaskbarStates.Paused);
-            if (tweak) MessageBoxManager.Register(); // Tweak button names
+            //if (tweak) MessageBoxManager.Register(); // Tweak button names
             var result = MessageBox.Show(owner, text, caption, buttons, icon, defaultButton);
-            if (tweak) MessageBoxManager.Unregister();
+            //if (tweak) MessageBoxManager.Unregister();
             TaskbarProgress.SetState(owner as Form, TaskbarProgress.TaskbarStates.Normal);
             return result;
         }
@@ -319,10 +319,6 @@ namespace com.clusterrr.hakchi_gui
                         ProcessNand(Task);
                         break;
                     case Tasks.UploadGames:
-                        if (exportGames)
-                            ExportGames();
-                        //else
-                            //UploadGames();
                         break;
                     case Tasks.MembootOriginal:
                         MembootOriginal();
@@ -886,310 +882,6 @@ namespace com.clusterrr.hakchi_gui
             }
         }
 
-        /*
-        public void UploadGames()
-        {
-            string gamesPath;
-            string rootFsPath;
-            string squashFsPath;
-            string gameSyncPath;
-            int progress = 0;
-            int maxProgress = 100;
-            if (Games == null || Games.Count == 0)
-                throw new Exception("there are no games");
-
-            // cleanup first
-            tempGamesDirectory = Path.Combine(tempDirectory, "games");
-            SetStatus(Resources.CleaningUp);
-            try
-            {
-                Shared.DirectoryDeleteInside(tempDirectory);
-                Directory.CreateDirectory(tempDirectory);
-                Directory.CreateDirectory(tempGamesDirectory);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("could not delete temp directory for UploadGames().");
-                Debug.WriteLine(ex.Message + " : " + ex.StackTrace);
-                ShowMessage(Resources.CannotDeleteTempFolder, Resources.UploadingGames);
-                DialogResult = DialogResult.Abort;
-                return;
-            }
-            SetProgress(progress += 5, maxProgress);
-
-            // building folders
-            if (FoldersMode == NesMenuCollection.SplitStyle.Custom)
-            {
-                SetStatus(Resources.BuildingFolders);
-                if (FoldersManagerFromThread(Games) != System.Windows.Forms.DialogResult.OK)
-                {
-                    DialogResult = DialogResult.Abort;
-                    return;
-                }
-                Games.AddBack();
-            }
-            else
-            {
-                SetStatus(Resources.BuildingMenu);
-                Games.Split(FoldersMode, MaxGamesPerFolder);
-            }
-            SetProgress(progress += 5, maxProgress);
-
-            var shell = hakchi.Shell;
-            try
-            {
-                if (WaitForClovershellFromThread() != DialogResult.OK)
-                {
-                    DialogResult = DialogResult.Abort;
-                    return;
-                }
-
-                gameSyncPath = hakchi.GetRemoteGameSyncPath();
-                gamesPath = shell.ExecuteSimple("hakchi get gamepath", 2000, true).Trim();
-                rootFsPath = shell.ExecuteSimple("hakchi get rootfs", 2000, true).Trim();
-                squashFsPath = shell.ExecuteSimple("hakchi get squashfs", 2000, true).Trim();
-                SetProgress(progress += 5, maxProgress);
-
-                // prepare unit for upload
-                hakchi.ShowSplashScreen();
-
-                // delete non-multiboot path if there are leftovers and we are now using multiboot
-                SetStatus(Resources.CleaningUp);
-                shell.ExecuteSimple("find \"$(hakchi findGameSyncStorage)/\" -maxdepth 1 | grep -" + (ConfigIni.Instance.SeparateGameStorage ? "v" : "") + "Ee '(/snes(-usa|-eur|-jpn)?|/nes(-usa|-jpn)?|/)$' | while read f; do rm -rf \"$f\"; done", 0, true);
-                SetProgress(progress += 5, maxProgress);
-
-                // Games!
-                SetStatus(Resources.AddingGames);
-                Dictionary<string, string> originalGames = new Dictionary<string, string>();
-                var stats = new GamesTreeStats();
-                AddMenu(Games, originalGames, stats);
-                SetProgress(progress += 15, maxProgress);
-
-                SetStatus(Resources.CalculatingDiff);
-                GetMemoryStats();
-                var maxGamesSize = (StorageFree + WrittenGamesSize) - ReservedMemory * 1024 * 1024;
-                if (stats.TotalSize > maxGamesSize)
-                {
-                    throw new Exception(string.Format(Resources.MemoryFull, stats.TotalSize / 1024 / 1024) + "\r\n\r\n" +
-                        string.Format(Resources.MemoryStats.Replace("|", "\r\n"),
-                        StorageTotal / 1024.0 / 1024.0,
-                        (StorageFree + WrittenGamesSize - ReservedMemory * 1024 * 1024) / 1024 / 1024,
-                        SaveStatesSize / 1024.0 / 1024.0,
-                        (StorageUsed - WrittenGamesSize - SaveStatesSize) / 1024.0 / 1024.0));
-                }
-                SetProgress(progress += 5, maxProgress);
-
-                // Determine which games need to actually be transferred (differential updates):
-                // Get the list of local files, timestamps, and sizes
-                HashSet<ApplicationFileInfo> localGameSet = ApplicationFileInfo.GetApplicationFileInfoForDirectory(tempGamesDirectory);
-
-                // Get the remote list of files, timestamps, and sizes
-                string gamesOnDevice = shell.ExecuteSimple($"mkdir -p \"{gameSyncPath}\"; cd \"{gameSyncPath}\"; find . -type f -exec sh -c \"stat \\\"{{}}\\\" -c \\\"%n %s %y\\\"\" \\;", 0, true);
-                HashSet<ApplicationFileInfo> remoteGameSet = ApplicationFileInfo.GetApplicationFileInfoFromConsoleOutput(gamesOnDevice);
-                SetProgress(progress += 5, maxProgress);
-
-                // Delete any remote files that aren't present locally
-                SetStatus(Resources.CleaningUp);
-                var remoteGamesToDelete = remoteGameSet.Except(localGameSet);
-                DeleteRemoteApplicationFiles(remoteGamesToDelete);
-
-                // Delete any local files that are already present on the remote
-                var localGamesToDelete = localGameSet.Intersect(remoteGameSet);
-                DeleteLocalApplicationFilesFromDirectory(localGamesToDelete, tempGamesDirectory);
-                SetProgress(progress += 5, maxProgress);
-
-                // Now transfer whatever games are remaining in the temp directory
-                SetStatus(Resources.UploadingGames);
-                int startProgress = progress;
-                shell.ExecuteSimple("hakchi eval 'umount \"$gamepath\"'");
-                using (var gamesTar = new TarStream(tempGamesDirectory, null, null))
-                {
-                    Debug.WriteLine($"Upload size: " + Shared.SizeSuffix(gamesTar.Length));
-                    int currentMaxProgress = 90 - startProgress;
-                    if (gamesTar.Length > 0)
-                    {
-                        gamesTar.OnReadProgress += delegate (long pos, long len)
-                        {
-                            progress = startProgress + (int)((double)pos / len * currentMaxProgress);
-                            SetProgress(progress, maxProgress);
-                        };
-                        shell.Execute($"tar -xvC \"{gameSyncPath}\"", gamesTar, null, null, 30000, true);
-                    }
-                }
-                SetProgress(progress = 90, maxProgress);
-
-                // Finally, delete any empty directories we may have left during the differential sync
-                SetStatus(Resources.CleaningUp);
-                shell.ExecuteSimple($"for f in $(find \"{gameSyncPath}\" -type d -mindepth 1 -maxdepth 2); do {{ ls -1 \"$f\" | grep -v pixelart | grep -v autoplay " +
-                    "| wc -l | { read wc; test $wc -eq 0 && rm -rf \"$f\"; } } ; done", 0);
-                SetProgress(progress += 5, maxProgress);
-
-                SetStatus(Resources.UploadingOriginalGames);
-                foreach (var originalCode in originalGames.Keys)
-                {
-                    string originalSyncCode = "";
-                    switch (ConfigIni.Instance.ConsoleType)
-                    {
-                        case MainForm.ConsoleType.NES:
-                        case MainForm.ConsoleType.Famicom:
-                            originalSyncCode =
-                                $"src=\"{squashFsPath}{gamesPath}/{originalCode}\" && " +
-                                $"dst=\"{gameSyncPath}/{originalGames[originalCode]}/{originalCode}\" && " +
-                                $"mkdir -p \"$dst\" && " +
-                                $"([ -e \"$dst/autoplay\" ] || ln -s \"$src/autoplay\" \"$dst/\") && " +
-                                $"([ -e \"$dst/pixelart\" ] || ln -s \"$src/pixelart\" \"$dst/\")";
-                            break;
-                        case MainForm.ConsoleType.SNES:
-                        case MainForm.ConsoleType.SuperFamicom:
-                            originalSyncCode =
-                                $"src=\"{squashFsPath}{gamesPath}/{originalCode}\" && " +
-                                $"dst=\"{gameSyncPath}/{originalGames[originalCode]}/{originalCode}\" && " +
-                                $"mkdir -p \"$dst\" && " +
-                                $"([ -e \"$dst/autoplay\" ] || ln -s \"$src/autoplay\" \"$dst/\")";
-                            break;
-                    }
-
-                    shell.ExecuteSimple(originalSyncCode, 30000, true);
-                };
-                SetProgress(progress += 4, maxProgress);
-
-                SetStatus(Resources.UploadingConfig);
-                hakchi.SyncConfig(Config);
-#if !DEBUG
-                if (Directory.Exists(tempDirectory))
-                {
-                    try
-                    {
-                        Directory.Delete(tempDirectory, true);
-                    }
-                    catch { }
-                }
-#endif
-                SetStatus(Resources.Done);
-                SetProgress(maxProgress, maxProgress);
-            }
-            finally
-            {
-                try
-                {
-                    if (shell.IsOnline)
-                        shell.ExecuteSimple("hakchi overmount_games; uistart", 100);
-                }
-                catch { }
-            }
-        }
-
-        private void DeleteRemoteApplicationFiles(IEnumerable<ApplicationFileInfo> filesToDelete)
-        {
-            using (MemoryStream commandBuilder = new MemoryStream())
-            {
-                string data = $"#!/bin/sh\ncd \"{hakchi.GetRemoteGameSyncPath()}\"\n";
-                commandBuilder.Write(Encoding.UTF8.GetBytes(data), 0, data.Length);
-
-                foreach (ApplicationFileInfo appInfo in filesToDelete)
-                {
-                    data = $"rm \"{appInfo.FilePath}\"\n";
-                    commandBuilder.Write(Encoding.UTF8.GetBytes(data), 0, data.Length);
-                }
-
-                try
-                {
-                    hakchi.Shell.Execute("cat > /tmp/cleanup.sh", commandBuilder, null, null, 5000, true);
-                    hakchi.Shell.ExecuteSimple("chmod +x /tmp/cleanup.sh && /tmp/cleanup.sh", 0, true);
-                }
-                finally
-                {
-                    hakchi.Shell.ExecuteSimple("rm /tmp/cleanup.sh");
-                }
-            }
-        }
-
-        private void DeleteLocalApplicationFilesFromDirectory(IEnumerable<ApplicationFileInfo> filesToDelete, string rootDirectory)
-        {
-            foreach (ApplicationFileInfo appInfo in filesToDelete)
-            {
-                string filepath = rootDirectory + appInfo.FilePath.Substring(1).Replace('/', '\\');
-                //if (appInfo.IsTarStreamRefFile)
-                //{
-                //    filepath += ".tarstreamref";
-                //}
-
-                File.Delete(filepath);
-
-                // determine if the folder is empty now -- if so, delete the folder also
-                string directory = Path.GetDirectoryName(filepath);
-                if (new DirectoryInfo(directory).GetFiles().Length == 0)
-                {
-                    Directory.Delete(directory);
-                }
-            }
-        }
-        */
-
-        public void ExportGames()
-        {
-            if (Games == null || Games.Count == 0)
-                throw new Exception("there are no games");
-
-            int progress = 0, maxProgress = 50;
-
-            if (FoldersMode == NesMenuCollection.SplitStyle.Custom)
-            {
-                SetStatus(Resources.BuildingFolders);
-                if (FoldersManagerFromThread(Games) != DialogResult.OK)
-                {
-                    DialogResult = DialogResult.Abort;
-                    return;
-                }
-                Games.AddBack();
-            }
-            else
-            {
-                SetStatus(Resources.BuildingMenu);
-                Games.Split(FoldersMode, MaxGamesPerFolder);
-            }
-            SetProgress(progress += 5, maxProgress);
-
-            // export games directory!
-            SetStatus(Resources.CleaningUp);
-            tempGamesDirectory = exportDirectory;
-            bool directoryNotEmpty = (Directory.GetDirectories(tempGamesDirectory).Length > 0);
-            if (directoryNotEmpty && MessageBoxFromThread(this, string.Format(Resources.PermanentlyDeleteQ, tempGamesDirectory), Resources.FolderNotEmpty, MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1, false) == DialogResult.Yes)
-            {
-                Shared.DirectoryDeleteInside(tempGamesDirectory);
-                directoryNotEmpty = false;
-            }
-            if (directoryNotEmpty)
-            {
-                SetStatus(Resources.Aborting);
-                DialogResult = DialogResult.Abort;
-                return;
-            }
-            if (!Directory.Exists(tempGamesDirectory))
-            {
-                Directory.CreateDirectory(tempGamesDirectory);
-            }
-            SetProgress(progress += 5, maxProgress);
-
-            SetStatus(Resources.AddingGames);
-            Dictionary<string, string> originalGames = new Dictionary<string, string>();
-            var stats = new GamesTreeStats();
-            AddMenu(Games, originalGames, stats);
-            SetProgress(progress += 30, maxProgress);
-
-            // show resulting games directory
-            SetStatus(Resources.PleaseWait);
-            new Process()
-            {
-                StartInfo = new ProcessStartInfo()
-                {
-                    FileName = tempGamesDirectory,
-                }
-            }.Start();
-            SetStatus(Resources.Done);
-            SetProgress(maxProgress, maxProgress);
-        }
-
         public static Image TakeScreenshot()
         {
             var screenshot = new Bitmap(1280, 720, PixelFormat.Format24bppRgb);
@@ -1473,104 +1165,6 @@ namespace com.clusterrr.hakchi_gui
 
             SetStatus(Resources.Done);
             SetProgress(maxProgress, maxProgress);
-        }
-
-        private class GamesTreeStats
-        {
-            public List<NesMenuCollection> allMenus = new List<NesMenuCollection>();
-            public int TotalGames = 0;
-            public long TotalSize = 0;
-            public long TransferSize = 0;
-        }
-
-        private void AddMenu(NesMenuCollection menuCollection, Dictionary<string, string> originalGames, GamesTreeStats stats = null)
-        {
-            if (stats == null)
-                stats = new GamesTreeStats();
-            if (!stats.allMenus.Contains(menuCollection))
-                stats.allMenus.Add(menuCollection);
-            int menuIndex = stats.allMenus.IndexOf(menuCollection);
-            string targetDirectory = Path.Combine(tempGamesDirectory, string.Format("{0:D3}", menuIndex));
-
-            foreach (var element in menuCollection)
-            {
-                if (element is NesApplication)
-                {
-                    stats.TotalGames++;
-                    var game = element as NesApplication;
-                    var gameSize = game.Size();
-                    Debug.WriteLine(string.Format("Processing {0} ('{1}'), size: {2}KB", game.Code, game.Name, gameSize / 1024));
-                    NesApplication gameCopy = game;
-                    //NesApplication gameCopy;
-                    //if (linkRelativeGames)
-                    //{   // linked export
-                    //    gameCopy = game.CopyTo(targetDirectory, NesApplication.CopyMode.LinkedExport);
-                    //}
-                    //else if (exportGames)
-                    //{   // standard export
-                    //    gameCopy = game.CopyTo(targetDirectory, NesApplication.CopyMode.Export);
-                    //}
-                    //else
-                    //{   // sync/upload to snes mini
-                    //    gameCopy = game.CopyTo(
-                    //        targetDirectory,
-                    //        ConfigIni.Instance.SyncLinked ? NesApplication.CopyMode.LinkedSync : NesApplication.CopyMode.Sync,
-                    //        true);
-                    //}
-                    stats.TotalSize += gameSize;
-                    stats.TransferSize += gameSize;
-                    stats.TotalGames++;
-
-                    try
-                    {
-                        if (gameCopy is ISupportsGameGenie && File.Exists(gameCopy.GameGeniePath))
-                        {
-                            bool compressed = false;
-                            if (gameCopy.DecompressPossible().Count() > 0)
-                            {
-                                gameCopy.Decompress();
-                                compressed = true;
-                            }
-                            (gameCopy as ISupportsGameGenie).ApplyGameGenie();
-                            if (compressed)
-                                gameCopy.Compress();
-                            File.Delete((gameCopy as NesApplication).GameGeniePath);
-                        }
-                    }
-                    catch (GameGenieFormatException ex)
-                    {
-                        ShowError(new Exception(string.Format(Resources.GameGenieFormatError, ex.Code, game.Name)), dontStop: true);
-                    }
-                    catch (GameGenieNotFoundException ex)
-                    {
-                        ShowError(new Exception(string.Format(Resources.GameGenieNotFound, ex.Code, game.Name)), dontStop: true);
-                    }
-
-                    // legacy
-                    if (gameCopy.IsOriginalGame)
-                        originalGames[gameCopy.Code] = $"{menuIndex:D3}";
-                }
-                if (element is NesMenuFolder)
-                {
-                    var folder = element as NesMenuFolder;
-                    if (folder.Name == Resources.FolderNameTrashBin)
-                        continue; // skip recycle bin!
-
-                    if (!stats.allMenus.Contains(folder.ChildMenuCollection))
-                    {
-                        stats.allMenus.Add(folder.ChildMenuCollection);
-                        AddMenu(folder.ChildMenuCollection, originalGames, stats);
-                    }
-                    folder.ChildIndex = stats.allMenus.IndexOf(folder.ChildMenuCollection);
-                    var folderDir = Path.Combine(targetDirectory, folder.Code);
-                    long folderSize;
-                    folder.SetOutputPath(folderDir);
-                    folder.Save();
-                    folderSize = folder.Size();
-                    stats.TotalSize += folderSize;
-                    stats.TransferSize += folderSize;
-                }
-            }
         }
 
         private bool ExecuteTool(string tool, string args, string directory = null, bool external = false, Action<string> onLineOutput = null)
@@ -2112,23 +1706,24 @@ namespace com.clusterrr.hakchi_gui
 
                         if (exists && !nonDestructiveSync)
                         {
-                            Directory.Delete(path, true);
+                            Shared.EnsureEmptyDirectory(path);
+                            Thread.Sleep(0);
                         }
 
                         if (!exists || !nonDestructiveSync)
                         {
                             Directory.CreateDirectory(path);
-                            new DirectoryInfo(path).Refresh();
+                            //new DirectoryInfo(path).Refresh();
 
                             // extract .desktop file from archive
                             using (var o = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
                             {
                                 szExtractor.ExtractFile(f, o);
+                                o.Flush();
                                 if (!this.restoreAllOriginalGames && !selectedGames.Contains(code))
                                 {
                                     selectedGames.Add(code);
                                 }
-                                o.Flush();
                             }
 
                             // create game temporarily to perform cover search
