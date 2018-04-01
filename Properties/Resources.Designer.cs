@@ -1481,7 +1481,7 @@ namespace com.clusterrr.hakchi_gui.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to 8f386fc (dirty).
+        ///   Looks up a localized string similar to f3ec814 (dirty).
         /// </summary>
         internal static string gitCommit {
             get {
@@ -2607,6 +2607,15 @@ namespace com.clusterrr.hakchi_gui.Properties {
         internal static string Skipping {
             get {
                 return ResourceManager.GetString("Skipping", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Starting....
+        /// </summary>
+        internal static string Starting {
+            get {
+                return ResourceManager.GetString("Starting", resourceCulture);
             }
         }
         
