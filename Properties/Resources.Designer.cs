@@ -79,6 +79,15 @@ namespace com.clusterrr.hakchi_gui.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Processing game {0}.
+        /// </summary>
+        internal static string AddingGame {
+            get {
+                return ResourceManager.GetString("AddingGame", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Processing games, please wait....
         /// </summary>
         internal static string AddingGames {
@@ -890,7 +899,9 @@ namespace com.clusterrr.hakchi_gui.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Hello there! I&apos;m very glad that you are using hakchi2. It&apos;s very simple to use. Just click &quot;Add more games&quot;, select some ROMs, press &quot;Synchronize&quot; to upload games to the console internal memory, or press &quot;Export&quot; to use USB HOST mode, and follow the instructions. Good luck!.
+        ///   Looks up a localized string similar to Hello there! I&apos;m very glad that you are using hakchi2!
+        ///
+        ///It&apos;s very simple to use. Just click &quot;Add more games&quot;, select some ROMs, press &quot;Synchronize&quot; to upload games to the console internal memory, or press &quot;Export&quot; to use USB HOST mode, and follow the instructions. Good luck!.
         /// </summary>
         internal static string FirstRun {
             get {
@@ -1481,7 +1492,7 @@ namespace com.clusterrr.hakchi_gui.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to f3ec814 (dirty).
+        ///   Looks up a localized string similar to 9f7ad4b (dirty).
         /// </summary>
         internal static string gitCommit {
             get {
@@ -2197,6 +2208,15 @@ namespace com.clusterrr.hakchi_gui.Properties {
         internal static string RepairingGame {
             get {
                 return ResourceManager.GetString("RepairingGame", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Are you sure you want to attempt repair selected games? (This could break some games, especially if there weren&apos;t imported by hakchi2. Only attempt on broken games.).
+        /// </summary>
+        internal static string RepairSelectedGamesQ {
+            get {
+                return ResourceManager.GetString("RepairSelectedGamesQ", resourceCulture);
             }
         }
         
